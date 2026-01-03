@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { Comments } from './components/Comments';
 import { Comment, User } from './types';
-import { fetchUsers } from './api';
+import { fetchUsers, fetchDocument, updateDocument } from './api';
 import './index.css';
 
 function App() {
@@ -10,13 +10,19 @@ function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [docId] = useState('doc-1');
   const [newComment, setNewComment] = useState<Comment | null>(null);
-  const [docContent, setDocContent] = useState('Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nSed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco.');
+  const [docContent, setDocContent] = useState('');
+  const [selectedText, setSelectedText] = useState('');
 
   useEffect(() => {
     // Load Users
     fetchUsers().then(loadedUsers => {
       setUsers(loadedUsers);
       if (loadedUsers.length > 0) setCurrentUser(loadedUsers[0]);
+    }).catch(console.error);
+
+    // Load Document
+    fetchDocument(docId).then(doc => {
+      setDocContent(doc.content);
     }).catch(console.error);
 
     // Connect to API
@@ -27,15 +33,38 @@ function App() {
       s.emit('join_doc', docId);
     });
 
-    s.on('new_comment', (comment: Comment) => {
-      console.log('New Comment:', comment);
-      setNewComment(comment);
+    s.on('new_comment', (payload: any) => {
+      if (payload.type === 'doc_update') {
+        // Simple "Last write wins" for MVP - replace content if external update
+        // In real app, we need OT/CRDTs or robust merging
+        setDocContent(payload.content);
+      } else {
+        console.log('New Comment:', payload);
+        setNewComment(payload as Comment);
+      }
     });
 
     return () => {
       s.disconnect();
     };
   }, [docId]);
+
+  const handleDocChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    setDocContent(newContent);
+    // Debounce this in production!
+    updateDocument(docId, newContent);
+  };
+
+  const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const target = e.currentTarget;
+    const start = target.selectionStart;
+    const end = target.selectionEnd;
+    if (start !== end) {
+      const text = docContent.substring(start, end);
+      setSelectedText(text);
+    }
+  };
 
   const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const u = users.find(u => u.username === e.target.value);
@@ -64,10 +93,15 @@ function App() {
           <textarea 
             className="doc-editor"
             value={docContent}
-            onChange={(e) => setDocContent(e.target.value)}
+            onChange={handleDocChange}
+            onSelect={handleSelect}
           />
           <p className="hint">
-            Highlights: <span className="highlight">Select text to comment (mock)</span>.
+            {selectedText ? (
+              <span>Selected context: <strong style={{color: 'blue'}}>{selectedText}</strong></span>
+            ) : (
+              <span>Highlight text to attach context to your comment.</span>
+            )}
           </p>
         </section>
         
@@ -75,7 +109,8 @@ function App() {
           <Comments 
             docId={docId} 
             currentUser={currentUser} 
-            newComment={newComment} 
+            newComment={newComment}
+            selectedContext={selectedText}
           />
         </aside>
       </main>

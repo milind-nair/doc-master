@@ -21,7 +21,18 @@ async function main() {
     },
   })
 
-  console.log({ alice, bob })
+  // Create Default Document
+  const doc = await prisma.document.upsert({
+    where: { id: 'doc-1' },
+    update: {},
+    create: {
+      id: 'doc-1',
+      title: 'Project Proposal',
+      content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.\nSed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\nUt enim ad minim veniam, quis nostrud exercitation ullamco.'
+    }
+  })
+
+  console.log({ alice, bob, doc })
 }
 
 main()

@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
 
 // POST /comments
 router.post('/', async (req, res) => {
-  const { docId, content, authorId, parentId } = req.body;
+  const { docId, content, authorId, parentId, quote, rangeStart, rangeEnd } = req.body;
   
   if (!docId || !content || !authorId) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -53,6 +53,9 @@ router.post('/', async (req, res) => {
         content,
         docId,
         authorId,
+        quote,
+        rangeStart,
+        rangeEnd,
         parentId: parentId || null
       },
       include: { author: true }
@@ -93,6 +96,33 @@ router.post('/', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Failed to create comment' });
+  }
+});
+
+// GET /comments/documents/:id
+router.get('/documents/:id', async (req, res) => {
+  try {
+    const doc = await prisma.document.findUnique({ where: { id: req.params.id } });
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    res.json(doc);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch document' });
+  }
+});
+
+// PUT /comments/documents/:id
+router.put('/documents/:id', async (req, res) => {
+  const { content } = req.body;
+  try {
+    const doc = await prisma.document.update({
+      where: { id: req.params.id },
+      data: { content }
+    });
+    // Broadcast update
+    broadcastComment(doc.id, { type: 'doc_update', content });
+    res.json(doc);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update document' });
   }
 });
 

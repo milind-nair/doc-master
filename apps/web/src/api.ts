@@ -28,3 +28,17 @@ export const createComment = async (
   if (!res.ok) throw new Error('Failed to create comment');
   return res.json();
 };
+
+export const fetchDocument = async (docId: string): Promise<{ content: string; title: string }> => {
+  const res = await fetch(`${API_URL}/comments/documents/${docId}`);
+  if (!res.ok) throw new Error('Failed to fetch document');
+  return res.json();
+};
+
+export const updateDocument = async (docId: string, content: string) => {
+  await fetch(`${API_URL}/comments/documents/${docId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  });
+};

@@ -6,9 +6,10 @@ interface Props {
   docId: string;
   currentUser: User;
   newComment: Comment | null;
+  selectedContext?: string;
 }
 
-export function Comments({ docId, currentUser, newComment }: Props) {
+export function Comments({ docId, currentUser, newComment, selectedContext }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState('');
 
@@ -55,13 +56,20 @@ export function Comments({ docId, currentUser, newComment }: Props) {
           </div>
         ))}
       </div>
-      <div className="composer">
-        <textarea 
-          placeholder="Write a comment... use @alice to mention"
-          value={text}
-          onChange={e => setText(e.target.value)}
-        />
-        <button onClick={handleSubmit}>Post</button>
+      <div className="composer" style={{ flexDirection: 'column', gap: '0.5rem' }}>
+        {selectedContext && (
+          <div style={{ fontSize: '0.8rem', padding: '4px', background: '#f0f9ff', borderLeft: '3px solid #0284c7', color: '#0369a1' }}>
+            Context: {selectedContext}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <textarea 
+            placeholder="Write a comment..."
+            value={text}
+            onChange={e => setText(e.target.value)}
+          />
+          <button onClick={handleSubmit}>Post</button>
+        </div>
       </div>
     </div>
   );

@@ -10,6 +10,13 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+model Document {
+  id      String    @id @default(uuid())
+  title   String
+  content String
+  comments Comment[]
+}
+
 model User {
   id       String    @id @default(uuid())
   username String    @unique // simple handle like 'alice'
@@ -21,7 +28,11 @@ model User {
 model Comment {
   id        String    @id @default(uuid())
   content   String
-  docId     String    // External Document ID
+  quote     String?   // The selected text context
+  rangeStart Int?     // Start index of selection
+  rangeEnd   Int?     // End index of selection
+  docId     String
+  document  Document  @relation(fields: [docId], references: [id])
   authorId  String
   author    User      @relation(fields: [authorId], references: [id])
   parentId  String?
