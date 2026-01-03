@@ -20,6 +20,7 @@ export interface Comment {
   quote?: string;
   rangeStart?: number;
   rangeEnd?: number;
+  status: 'open' | 'resolved' | 'deleted';
   createdAt: string;
   mentions: Mention[];
   children?: Comment[]; // For recursive UI

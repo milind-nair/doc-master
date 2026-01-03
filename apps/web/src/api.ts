@@ -45,3 +45,11 @@ export const updateDocument = async (docId: string, content: string) => {
     body: JSON.stringify({ content })
   });
 };
+
+export const updateCommentStatus = async (commentId: string, status: string) => {
+  await fetch(`${API_URL}/comments/${commentId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+};

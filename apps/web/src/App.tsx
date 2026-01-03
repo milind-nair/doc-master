@@ -14,6 +14,7 @@ function App() {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{start: number, end: number} | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [activeComment, setActiveComment] = useState<{comment: Comment, top: number, left: number} | null>(null);
 
   useEffect(() => {
     fetchUsers().then(u => {
@@ -108,6 +109,32 @@ function App() {
 
   if (!currentUser) return <div>Loading...</div>;
 
+  const handleEditorClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    const target = e.currentTarget;
+    const { selectionStart } = target;
+    
+    // Find comment at this position
+    const comment = comments.find(c => 
+      c.status !== 'deleted' && 
+      c.rangeStart != null && c.rangeEnd != null &&
+      selectionStart >= c.rangeStart && selectionStart <= c.rangeEnd
+    );
+
+    if (comment) {
+      // Calculate position (approximation)
+      // Since it's a textarea, Getting exact XY of a character is hard without a library like 'textarea-caret'
+      // For MVP, render fixed center or near mouse? e.clientY is easy.
+      const rect = target.getBoundingClientRect();
+      setActiveComment({
+        comment,
+        top: e.clientY - rect.top + 20, // Relative to container
+        left: e.clientX - rect.left
+      });
+    } else {
+      setActiveComment(null);
+    }
+  };
+
   return (
     <div className="app-container">
        {/* ... Header ... */}
@@ -142,7 +169,15 @@ function App() {
               onSelect={handleSelect}
               onScroll={handleScroll}
               spellCheck={false}
+              onClick={handleEditorClick}
             />
+            {activeComment && (
+              <div className="comment-popover" style={{ top: activeComment.top, left: activeComment.left }}>
+                <strong>{activeComment.comment.author.username}</strong>
+                <p>{activeComment.comment.content}</p>
+                <button onClick={() => setActiveComment(null)}>✕</button>
+              </div>
+            )}
           </div>
 
           <p className="hint">

@@ -126,4 +126,20 @@ router.put('/documents/:id', async (req, res) => {
   }
 });
 
+// PATCH /comments/:id/status
+router.patch('/:id/status', async (req, res) => {
+  const { status } = req.body; // 'resolved' | 'deleted'
+  try {
+    const comment = await prisma.comment.update({
+      where: { id: req.params.id },
+      data: { status }
+    });
+    // Broadcast status change
+    broadcastComment(comment.docId, { type: 'comment_update', id: comment.id, status });
+    res.json(comment);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update comment status' });
+  }
+});
+
 export default router;

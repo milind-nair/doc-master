@@ -31,6 +31,7 @@ model Comment {
   quote     String?   // The selected text context
   rangeStart Int?     // Start index of selection
   rangeEnd   Int?     // End index of selection
+  status    String    @default("open") // open, resolved, deleted
   docId     String
   document  Document  @relation(fields: [docId], references: [id])
   authorId  String

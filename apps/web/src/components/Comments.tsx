@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Comment, User } from '../types';
-import { createComment, fetchComments } from '../api';
+import { fetchComments, createComment, updateCommentStatus } from '../api';
+import '../index.css';
 
 interface Props {
   docId: string;
@@ -19,13 +20,27 @@ export function Comments({ docId, currentUser, newComment, selectedContext, sele
   }, [docId]);
 
   useEffect(() => {
-    if (newComment && newComment.docId === docId) {
-      setComments(prev => {
-        if (prev.some(c => c.id === newComment.id)) return prev;
-        return [...prev, newComment];
-      });
+    if (newComment) { 
+      // Handle status updates or new comments
+      if (newComment.docId !== docId) return;
+
+      if ((newComment as any).status) {
+         // It's a status update (hacky payload type check)
+         setComments(prev => prev.map(c => c.id === newComment.id ? { ...c, status: (newComment as any).status } : c));
+      } else {
+         setComments(prev => {
+          if (prev.some(c => c.id === newComment.id)) return prev;
+          return [...prev, newComment];
+        });
+      }
     }
   }, [newComment, docId]);
+
+  const handleStatus = async (id: string, status: string) => {
+    await updateCommentStatus(id, status);
+    // Optimistic update
+    setComments(prev => prev.map(c => c.id === id ? { ...c, status: status as any } : c));
+  };
 
   const handleSubmit = async () => {
     if (!text.trim()) return;
@@ -46,15 +61,21 @@ export function Comments({ docId, currentUser, newComment, selectedContext, sele
     }
   };
 
+  const visibleComments = comments.filter(c => c.status !== 'deleted');
+
   return (
-    <div className="comments-sidebar">
+    <div className="comments-section">
       <h3>Comments for {docId}</h3>
-      <div className="comment-list">
-        {comments.map(c => (
-          <div key={c.id} className="comment-card">
+      <div className="comments-list">
+        {visibleComments.map(c => (
+          <div key={c.id} className={`comment-card ${c.status === 'resolved' ? 'resolved' : ''}`}>
             <div className="comment-header">
-              <span className="author">{c.author?.username || 'Unknown'}</span>
+              <strong>{c.author.username}</strong>
               {c.parentId && <span className="reply-badge">Replying</span>}
+              <div className="actions">
+                 {c.status !== 'resolved' && <button onClick={() => handleStatus(c.id, 'resolved')} className="btn-xs">✓</button>}
+                 <button onClick={() => handleStatus(c.id, 'deleted')} className="btn-xs">🗑️</button>
+              </div>
             </div>
             <div className="comment-body">{c.content}</div>
             {c.quote && (
