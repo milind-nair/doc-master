@@ -7,9 +7,10 @@ interface Props {
   currentUser: User;
   newComment: Comment | null;
   selectedContext?: string;
+  selectedRange?: { start: number; end: number } | null;
 }
 
-export function Comments({ docId, currentUser, newComment, selectedContext }: Props) {
+export function Comments({ docId, currentUser, newComment, selectedContext, selectedRange }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState('');
 
@@ -29,7 +30,15 @@ export function Comments({ docId, currentUser, newComment, selectedContext }: Pr
   const handleSubmit = async () => {
     if (!text.trim()) return;
     try {
-      await createComment(docId, text, currentUser.id);
+      await createComment(
+        docId, 
+        text, 
+        currentUser.id, 
+        undefined, 
+        selectedContext, 
+        selectedRange?.start, 
+        selectedRange?.end
+      );
       setText('');
     } catch (e) {
       console.error(e);
@@ -48,6 +57,11 @@ export function Comments({ docId, currentUser, newComment, selectedContext }: Pr
               {c.parentId && <span className="reply-badge">Replying</span>}
             </div>
             <div className="comment-body">{c.content}</div>
+            {c.quote && (
+              <div className="comment-quote" style={{ fontSize: '0.8rem', color: '#666', borderLeft: '2px solid #ccc', paddingLeft: '4px', marginTop: '4px' }}>
+                "{c.quote}"
+              </div>
+            )}
             {c.mentions && c.mentions.length > 0 && (
               <div className="mentions">
                 Mentioned: {c.mentions.map(m => `@${m.user?.username}`).join(' ')}

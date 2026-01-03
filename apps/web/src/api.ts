@@ -18,12 +18,15 @@ export const createComment = async (
   docId: string, 
   content: string, 
   authorId: string, 
-  parentId?: string
+  parentId?: string,
+  quote?: string,
+  rangeStart?: number,
+  rangeEnd?: number
 ): Promise<Comment> => {
   const res = await fetch(`${API_URL}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ docId, content, authorId, parentId })
+    body: JSON.stringify({ docId, content, authorId, parentId, quote, rangeStart, rangeEnd })
   });
   if (!res.ok) throw new Error('Failed to create comment');
   return res.json();

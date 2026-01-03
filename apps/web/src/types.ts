@@ -17,6 +17,9 @@ export interface Comment {
   authorId: string;
   author: User;
   parentId: string | null;
+  quote?: string;
+  rangeStart?: number;
+  rangeEnd?: number;
   createdAt: string;
   mentions: Mention[];
   children?: Comment[]; // For recursive UI
