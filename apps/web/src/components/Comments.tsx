@@ -1,45 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Comment, User } from '../types';
-import { fetchComments, createComment, updateCommentStatus } from '../api';
+import { createComment, updateCommentStatus } from '../api';
 import '../index.css';
 
 interface Props {
   docId: string;
   currentUser: User;
-  newComment: Comment | null;
+  comments: Comment[]; // Received from parent
   selectedContext?: string;
   selectedRange?: { start: number; end: number } | null;
+  onCommentUpdate: (id: string, status: any) => void;
 }
 
-export function Comments({ docId, currentUser, newComment, selectedContext, selectedRange }: Props) {
-  const [comments, setComments] = useState<Comment[]>([]);
+export function Comments({ docId, currentUser, comments, selectedContext, selectedRange, onCommentUpdate }: Props) {
   const [text, setText] = useState('');
-
-  useEffect(() => {
-    fetchComments(docId).then(setComments).catch(console.error);
-  }, [docId]);
-
-  useEffect(() => {
-    if (newComment) { 
-      // Handle status updates or new comments
-      if (newComment.docId !== docId) return;
-
-      if ((newComment as any).status) {
-         // It's a status update (hacky payload type check)
-         setComments(prev => prev.map(c => c.id === newComment.id ? { ...c, status: (newComment as any).status } : c));
-      } else {
-         setComments(prev => {
-          if (prev.some(c => c.id === newComment.id)) return prev;
-          return [...prev, newComment];
-        });
-      }
-    }
-  }, [newComment, docId]);
 
   const handleStatus = async (id: string, status: string) => {
     await updateCommentStatus(id, status);
-    // Optimistic update
-    setComments(prev => prev.map(c => c.id === id ? { ...c, status: status as any } : c));
+    onCommentUpdate(id, status);
   };
 
   const handleSubmit = async () => {
@@ -54,6 +32,7 @@ export function Comments({ docId, currentUser, newComment, selectedContext, sele
         selectedRange?.start, 
         selectedRange?.end
       );
+      // Logic handled via socket in App.tsx now
       setText('');
     } catch (e) {
       console.error(e);
@@ -88,6 +67,9 @@ export function Comments({ docId, currentUser, newComment, selectedContext, sele
                 Mentioned: {c.mentions.map(m => `@${m.user?.username}`).join(' ')}
               </div>
             )}
+            <div className="comment-footer">
+              {new Date(c.createdAt).toLocaleTimeString()}
+            </div>
           </div>
         ))}
       </div>

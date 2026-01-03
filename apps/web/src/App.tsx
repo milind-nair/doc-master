@@ -30,10 +30,17 @@ function App() {
     s.on('new_comment', (payload: any) => {
       if (payload.type === 'doc_update') {
         setDocContent(payload.content);
+      } else if (payload.type === 'comment_update') {
+        // Handle Delete/Resolve updates
+        setComments(prev => prev.map(c => c.id === payload.id ? { ...c, status: payload.status } : c));
       } else {
+        // Handle New Comment
+        // Deduplicate just in case
         const c = payload as Comment;
-        setNewComment(c);
-        setComments(prev => [...prev, c]); // Update local comments
+        setComments(prev => {
+          if (prev.some(existing => existing.id === c.id)) return prev;
+          return [...prev, c];
+        });
       }
     });
 
@@ -62,14 +69,14 @@ function App() {
     const u = users.find(u => u.username === e.target.value);
     if (u) setCurrentUser(u);
   };
-
+  
   // Render Highlights
   const renderHighlights = () => {
     if (!docContent) return null;
     
-    // Sort comments by start index
+    // Sort comments by start index. Filter out deleted!
     const sorted = [...comments]
-      .filter(c => c.rangeStart != null && c.rangeEnd != null)
+      .filter(c => c.rangeStart != null && c.rangeEnd != null && c.status !== 'deleted')
       .sort((a, b) => (a.rangeStart || 0) - (b.rangeStart || 0));
 
     // Naive rendering: just full text with mark tags inserted
@@ -85,8 +92,13 @@ function App() {
       }
       // Highlight segment
       const end = Math.min(c.rangeEnd!, docContent.length);
+      const isResolved = c.status === 'resolved';
       segments.push(
-        <mark key={c.id} title={c.content} className="highlight-mark">
+        <mark 
+          key={c.id} 
+          title={c.content} 
+          className={`highlight-mark ${isResolved ? 'highlight-resolved' : ''}`}
+        >
           {docContent.slice(c.rangeStart!, end)}
         </mark>
       );
@@ -106,6 +118,11 @@ function App() {
       backdrop.scrollLeft = e.currentTarget.scrollLeft;
     }
   };
+  
+  // Callback for when comments change status (optimistic update from Sidebar)
+  const onCommentUpdate = (id: string, newStatus: any) => {
+    setComments(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+  };
 
   if (!currentUser) return <div>Loading...</div>;
 
@@ -121,13 +138,10 @@ function App() {
     );
 
     if (comment) {
-      // Calculate position (approximation)
-      // Since it's a textarea, Getting exact XY of a character is hard without a library like 'textarea-caret'
-      // For MVP, render fixed center or near mouse? e.clientY is easy.
       const rect = target.getBoundingClientRect();
       setActiveComment({
         comment,
-        top: e.clientY - rect.top + 20, // Relative to container
+        top: e.clientY - rect.top + 20, 
         left: e.clientX - rect.left
       });
     } else {
@@ -158,7 +172,6 @@ function App() {
             <div id="backdrop" className="doc-backdrop">
               <div className="highlights">
                 {renderHighlights()}
-                {/* Add a trailing space to fix weird scroll alignment */}
                 <br/> 
               </div>
             </div>
@@ -175,7 +188,15 @@ function App() {
               <div className="comment-popover" style={{ top: activeComment.top, left: activeComment.left }}>
                 <strong>{activeComment.comment.author.username}</strong>
                 <p>{activeComment.comment.content}</p>
-                <button onClick={() => setActiveComment(null)}>✕</button>
+                <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                    {activeComment.comment.status !== 'resolved' && (
+                        <button style={{position: 'static', color: 'green'}} onClick={() => {
+                            updateCommentStatus(activeComment.comment.id, 'resolved'); // Fire and forget
+                            setActiveComment(null);
+                        }}>Resolve</button>
+                    )}
+                </div>
+                <button className="close-btn" onClick={() => setActiveComment(null)}>✕</button>
               </div>
             )}
           </div>
@@ -192,10 +213,11 @@ function App() {
         <aside className="sidebar">
           <Comments 
             docId={docId} 
-            currentUser={currentUser} 
-            newComment={newComment}
+            currentUser={currentUser}
+            comments={comments} 
             selectedContext={selectedText}
             selectedRange={selectionRange}
+            onCommentUpdate={onCommentUpdate}
           />
         </aside>
       </main>
